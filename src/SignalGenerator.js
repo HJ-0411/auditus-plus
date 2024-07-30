@@ -42,20 +42,33 @@ const SignalGenerator = () => {
       osc.connect(gain);
       gain.connect(audioCtx.destination);
 
-      // Convert dB level to linear gain
-      const gainValue = Math.pow(10, dbLevel / 20);
-      gain.gain.setValueAtTime(gainValue, audioCtx.currentTime);
-
       // Start oscillator
       osc.start();
 
-      // Stop oscillator after 2 seconds
-      setTimeout(() => {
-        osc.stop();
-        resolve();
-      }, 2000);  // Play each frequency for 2 seconds
-    });
-  };
+      // Increment volume every 2 seconds
+    const intervalId = setInterval(() => {
+      setDecibels((prevDecibels) => {
+        const newDecibels = prevDecibels + 10;
+        return newDecibels > 120 ? 0 : newDecibels; // Reset to 0 dB after 120 dB
+      });
+    }, 2000);
+
+    // Cleanup function to stop the oscillator and clear the interval when the component unmounts
+    return () => {
+      oscillator.stop();
+      audioCtx.current.close();
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Convert decibels to linear gain
+    const gainValue = Math.pow(10, decibels / 20);
+    // Update the gain node value whenever the decibels state changes
+    if (gain.current) {
+      gain.gain.setValueAtTime(gainValue, audioCtx.currentTime);
+    }
+  }, [decibels]);
 
   const sleep = (ms) => {
     return new Promise((resolve) => setTimeout(resolve, ms));  // Sleep function to pause for the given duration
